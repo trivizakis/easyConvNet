@@ -37,14 +37,14 @@ class Utils:
         return f_mri, f_l
 
     #hyperparameters json file: read
-    def get_hypes(filename="hypes"):        
-        with open(filename, "rb") as file:
+    def get_hypes(path="hypes"):        
+        with open(path, encoding='utf-8') as file:
             hypes = json.load(file)
         return hypes
     #hyperparameters json file: save
     def save_hypes(path, filename, hypes):        
         with open(path+filename,'w') as file:
-            json.dumps(hypes,file)
+            json.dump(hypes,file)
 
     #callbacks
     def get_callbacks(hyperparameters):
@@ -73,6 +73,6 @@ class Utils:
         #early stop
         early_stop = keras.callbacks.EarlyStopping(monitor="val_acc",
                                                    patience=hyperparameters["early_stop_patience"],
-                                                   mode="max")#,
-                                                   #restore_best_weights=True)
+                                                   mode="max")
+                                                   #,restore_best_weights=True)
         return [history,csv_logger,tb,chkp,early_stop]

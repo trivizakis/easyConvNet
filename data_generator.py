@@ -23,7 +23,7 @@ class DataGenerator(keras.utils.Sequence):
         self.list_IDs = list_IDs
         self.n_channels = hypes["input_shape"][(len(hypes["input_shape"])-1)] # color channels
         self.n_classes = hypes["num_classes"]
-        self.shuffle = hypes["shuffle"]
+        self.shuffle = hypes["generator_shuffle"]
         self.training = training
         self.on_epoch_end()
 
@@ -59,13 +59,17 @@ class DataGenerator(keras.utils.Sequence):
         # Generate data
         for i, ID in enumerate(list_IDs_temp):
             # Store sample
-            X[i,] = np.load(self.hypes["dataset_dir"] + ID + '.npy')            
+            X[i,] = np.load(self.hypes["dataset_dir"] + ID + '.npy')       
             
-            # Retrieve labels
+            # Store class
             y[i] = self.labels[ID]
             
-            #apply data augmentation
-            if self.training == True:
-                X, y = DataAugmentation.apply_augmentation(X,y,self.hypes)
-
-        return X, keras.utils.to_categorical(y, num_classes=self.n_classes)
+        #apply data augmentation
+        if self.training == True and self.hypes["data_augmentation"] == True and self.hypes["offline_augmentation"] == False:
+            X_augmented, y_augmented = DataAugmentation.apply_augmentation(list(X),list(y),self.hypes)
+            X = np.concatenate((X,X_augmented))
+            y = np.concatenate((y,y_augmented))
+            
+        if self.hypes["loss"] != "scc":
+            y = keras.utils.to_categorical(y, num_classes=self.n_classes)
+        return X, y
