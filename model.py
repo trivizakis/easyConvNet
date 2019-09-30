@@ -142,6 +142,10 @@ class CustomModel:
         for i, ID in enumerate(testing_generator.list_IDs):
 #            if len(y_pred) == i:
 #                break
+#            print(len(testing_generator.labels))
+#            print(len(y_true))
+#            print(len(y_pred))
+#            print(len(testing_generator.list_IDs))
             y_true[i]=testing_generator.labels[ID]
         acc = accuracy_score(y_true,y_pred)
         report = classification_report(y_true,y_pred, target_names=hyperparameters["class_names"])# or instead y_pred --> confidence
@@ -287,6 +291,28 @@ class CustomModel:
             loss=keras.losses.categorical_crossentropy
         elif hyperparameters["loss"] == "bc":
             loss=keras.losses.binary_crossentropy
+        elif hyperparameters["loss"] == "hinge":
+            loss=keras.losses.hinge
+        elif hyperparameters["loss"] == "squared_hinge":
+            loss=keras.losses.squared_hinge
+        elif hyperparameters["loss"] == "categorical_hinge":
+            loss=keras.losses.categorical_hinge     
+        elif hyperparameters["loss"] == "logcosh":
+            loss=keras.losses.logcosh          
+        elif hyperparameters["loss"] == "huber_loss":
+            loss=keras.losses.huber_loss                 
+        elif hyperparameters["loss"] == "kullback_leibler_divergence":
+            loss=keras.losses.kullback_leibler_divergence                       
+        elif hyperparameters["loss"] == "poisson":
+            loss=keras.losses.poisson                   
+        elif hyperparameters["loss"] == "cosine_proximity":
+            loss=keras.losses.cosine_proximity    
+        elif hyperparameters["loss"] == "mean_squared_error":
+            loss=keras.losses.mean_squared_error   
+        elif hyperparameters["loss"] == "mean_squared_logarithmic_error":
+            loss=keras.losses.mean_squared_logarithmic_error   
+        elif hyperparameters["loss"] == "mean_absolute_error":
+            loss=keras.losses.mean_absolute_error   
         else:
             print("Not Supported: " + hyperparameters["loss"])
         
