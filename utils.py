@@ -64,14 +64,14 @@ class Utils:
         tb = keras.callbacks.TensorBoard(hyperparameters["chkp_dir"]+hyperparameters["version"]+hyperparameters["log_dir"]+hyperparameters["tb_dir"])
         
         #saves models per epoch
-        filepath = hyperparameters["chkp_dir"]+hyperparameters["version"]+"weights-chpoint-{epoch:02d}-{val_acc:.2f}.h5"
+        filepath = hyperparameters["chkp_dir"]+hyperparameters["version"]+"weights-chpoint-{epoch:02d}-{val_accuracy:.2f}.h5"
         chkp = keras.callbacks.ModelCheckpoint(filepath=filepath,
                                                save_best_only=True,
-                                               monitor='val_acc',
+                                               monitor='val_accuracy',
                                                mode="max")
         
         #early stop
-        early_stop = keras.callbacks.EarlyStopping(monitor="val_acc",
+        early_stop = keras.callbacks.EarlyStopping(monitor="val_accuracy",
                                                    patience=hyperparameters["early_stop_patience"],
                                                    mode="max")
                                                    #,restore_best_weights=True)

@@ -6,12 +6,12 @@
 @github: https://github.com/trivizakis
 
 """
-from keras.layers import Conv3D,BatchNormalization,Activation,concatenate
+from keras.layers import Conv3D,BatchNormalization,Activation
 from keras.layers import MaxPooling3D,AveragePooling3D,Flatten,Dense,Dropout
+from keras.layers import concatenate, add, SpatialDropout3D
 from keras import regularizers
 
-def zita(input_layer,hyperparameters):
-    index=5
+def zita(input_layer,hyperparameters,index):
     c_1 = Conv3D(
                     filters=hyperparameters["filters"][index],
                     kernel_size=(3,1,1),
@@ -73,8 +73,7 @@ def zita(input_layer,hyperparameters):
     
     return output
 
-def epsilon(input_layer,hyperparameters):
-    index=4
+def epsilon(input_layer,hyperparameters,index):
     c_1 = Conv3D(
                     filters=hyperparameters["filters"][index],
                     kernel_size=(3,1,1),
@@ -129,8 +128,7 @@ def epsilon(input_layer,hyperparameters):
     
     return output
 
-def delta(input_layer,hyperparameters):
-    index=3
+def delta(input_layer,hyperparameters,index):
     c_1 = Conv3D(
                     filters=hyperparameters["filters"][index],
                     kernel_size=(3,1,1),
@@ -177,106 +175,138 @@ def delta(input_layer,hyperparameters):
         output=Activation(hyperparameters["activation"], name="third_layer_out")(max_pool)
     
     return output
-def gama(input_layer,hyperparameters):
-    index=2
-    c_1 = Conv3D(
+def gama(input_layer,hyperparameters,index):
+    c_3_1 = Conv3D(
                     filters=hyperparameters["filters"][index],
-                    kernel_size=(3,1,1),
+                    kernel_size=(3,3,1),
                     strides=(1,1,1),
                     padding=hyperparameters["padding"],
                     kernel_regularizer=regularizers.l2(hyperparameters["kernel_regularizer"]),
-                    name="conv_1_"+str(index))(input_layer)
-    c_3 = Conv3D(
+                    name="conv_31_"+str(index))(input_layer)
+    c_1_3 = Conv3D(
                     filters=hyperparameters["filters"][index],
-                    kernel_size=(3,3,3),
+                    kernel_size=(3,1,3),
                     strides=(1,1,1),
                     padding=hyperparameters["padding"],
                     kernel_regularizer=regularizers.l2(hyperparameters["kernel_regularizer"]),
-                    name="conv_3_"+str(index))(input_layer)
-    c_5 = Conv3D(
+                    name="conv_13_"+str(index))(c_3_1)
+    c_5_1 = Conv3D(
                     filters=hyperparameters["filters"][index],
-                    kernel_size=(3,5,5),
+                    kernel_size=(3,5,1),
                     strides=(1,1,1),
                     padding=hyperparameters["padding"],
                     kernel_regularizer=regularizers.l2(hyperparameters["kernel_regularizer"]),
-                    name="conv_5_"+str(index))(input_layer)
-    c_7 = Conv3D(
-                    filters=hyperparameters["filters"][index],
-                    kernel_size=(3,7,7),
-                    strides=(1,1,1),
-                    padding=hyperparameters["padding"],
-                    kernel_regularizer=regularizers.l2(hyperparameters["kernel_regularizer"]),
-                    name="conv_7_"+str(index))(input_layer)
+                    name="conv_51_"+str(index))(input_layer)
     
-    concatenation_layer = concatenate([c_1,c_3,c_5,c_7],axis=-1)
-    max_pool = MaxPooling3D(pool_size=(2,2,2))(concatenation_layer)
+    c_1_5 = Conv3D(
+                    filters=hyperparameters["filters"][index],
+                    kernel_size=(3,1,5),
+                    strides=(1,1,1),
+                    padding=hyperparameters["padding"],
+                    kernel_regularizer=regularizers.l2(hyperparameters["kernel_regularizer"]),
+                    name="conv_15_"+str(index))(c_5_1)
+    c_7_1 = Conv3D(
+                    filters=hyperparameters["filters"][index],
+                    kernel_size=(3,7,1),
+                    strides=(1,1,1),
+                    padding=hyperparameters["padding"],
+                    kernel_regularizer=regularizers.l2(hyperparameters["kernel_regularizer"]),
+                    name="conv_71_"+str(index))(input_layer)
+    c_1_7 = Conv3D(
+                    filters=hyperparameters["filters"][index],
+                    kernel_size=(3,1,7),
+                    strides=(1,1,1),
+                    padding=hyperparameters["padding"],
+                    kernel_regularizer=regularizers.l2(hyperparameters["kernel_regularizer"]),
+                    name="conv_17_"+str(index))(c_7_1)
+    
+    
+    if hyperparameters["residual"]:
+        concatenation_layer = add([c_1_3,c_1_5,c_1_7,input_layer])
+        max_pool = MaxPooling3D(pool_size=(2,2,2))(concatenation_layer)
+    else:
+        concatenation_layer = concatenate([c_1_3,c_1_5,c_1_7],axis=-1)
+        max_pool = MaxPooling3D(pool_size=(2,2,2))(concatenation_layer)
     
     if hyperparameters["batch_normalization"]:
         bn=BatchNormalization(name="bn_"+str(index))(max_pool)
-        output=Activation(hyperparameters["activation"], name="fourth_layer_out")(bn)
+        output=Activation(hyperparameters["activation"], name="fourth_layer_out_"+str(index))(bn)
     else:
-        output=Activation(hyperparameters["activation"], name="fourth_layer_out")(max_pool)
+        output=Activation(hyperparameters["activation"], name="fourth_layer_out_"+str(index))(max_pool)
     
     return output
-def beta(input_layer,hyperparameters):
-    index=1
-    c_1 = Conv3D(
+def beta(input_layer,hyperparameters,index):
+    c_3_1 = Conv3D(
                     filters=hyperparameters["filters"][index],
-                    kernel_size=(3,1,1),
+                    kernel_size=(3,3,1),
                     strides=(1,1,1),
                     padding=hyperparameters["padding"],
                     kernel_regularizer=regularizers.l2(hyperparameters["kernel_regularizer"]),
-                    name="conv_1_"+str(index))(input_layer)
-    c_3 = Conv3D(
+                    name="conv_31_"+str(index))(input_layer)
+    c_1_3 = Conv3D(
                     filters=hyperparameters["filters"][index],
-                    kernel_size=(3,3,3),
+                    kernel_size=(3,1,3),
                     strides=(1,1,1),
                     padding=hyperparameters["padding"],
                     kernel_regularizer=regularizers.l2(hyperparameters["kernel_regularizer"]),
-                    name="conv_3_"+str(index))(input_layer)
-    c_5 = Conv3D(
+                    name="conv_13_"+str(index))(c_3_1)
+    c_5_1 = Conv3D(
                     filters=hyperparameters["filters"][index],
-                    kernel_size=(3,5,5),
+                    kernel_size=(3,5,1),
                     strides=(1,1,1),
                     padding=hyperparameters["padding"],
                     kernel_regularizer=regularizers.l2(hyperparameters["kernel_regularizer"]),
-                    name="conv_5_"+str(index))(input_layer)
+                    name="conv_51_"+str(index))(input_layer)
     
-    concatenation_layer = concatenate([c_1,c_3,c_5],axis=-1)    
-    max_pool = MaxPooling3D(pool_size=(2,2,2))(concatenation_layer)
+    c_1_5 = Conv3D(
+                    filters=hyperparameters["filters"][index],
+                    kernel_size=(3,1,5),
+                    strides=(1,1,1),
+                    padding=hyperparameters["padding"],
+                    kernel_regularizer=regularizers.l2(hyperparameters["kernel_regularizer"]),
+                    name="conv_15_"+str(index))(c_5_1)
+    
+    if hyperparameters["residual"]:
+        concatenation_layer = add([c_1_3,c_1_5,input_layer])    
+        max_pool = MaxPooling3D(pool_size=(2,2,2))(concatenation_layer)
+    else:
+        concatenation_layer = concatenate([c_1_3,c_1_5],axis=-1)    
+        max_pool = MaxPooling3D(pool_size=(2,2,2))(concatenation_layer)        
     
     if hyperparameters["batch_normalization"]:
         bn=BatchNormalization(name="bn_"+str(index))(max_pool)
-        output=Activation(hyperparameters["activation"], name="fifth_layer_out")(bn)
+        output=Activation(hyperparameters["activation"], name="fifth_layer_out_"+str(index))(bn)
     else:
-        output=Activation(hyperparameters["activation"], name="fifth_layer_out")(max_pool)
+        output=Activation(hyperparameters["activation"], name="fifth_layer_out_"+str(index))(max_pool)
     
     return output
-def alpha(input_layer,hyperparameters):
-    index=0
-    c_1 = Conv3D(
+def alpha(input_layer,hyperparameters,index):
+    c_3_1 = Conv3D(
                     filters=hyperparameters["filters"][index],
-                    kernel_size=(3,1,1),
+                    kernel_size=(3,3,1),
                     strides=(1,1,1),
                     padding=hyperparameters["padding"],
                     kernel_regularizer=regularizers.l2(hyperparameters["kernel_regularizer"]),
-                    name="conv_1_"+str(index))(input_layer)
-    c_3 = Conv3D(
+                    name="conv_31_"+str(index))(input_layer)
+    c_1_3 = Conv3D(
                     filters=hyperparameters["filters"][index],
-                    kernel_size=(3,3,3),
+                    kernel_size=(3,1,3),
                     strides=(1,1,1),
                     padding=hyperparameters["padding"],
                     kernel_regularizer=regularizers.l2(hyperparameters["kernel_regularizer"]),
-                    name="conv_3_"+str(index))(input_layer)
+                    name="conv_13_"+str(index))(c_3_1)
     
-    concatenation_layer = concatenate([c_1,c_3],axis=-1)
-    max_pool = MaxPooling3D(pool_size=(2,2,2))(concatenation_layer)
+    if hyperparameters["residual"]:
+        concatenation_layer = add([c_1_3,input_layer])
+        max_pool = MaxPooling3D(pool_size=(2,2,2))(concatenation_layer)
+    else:
+        max_pool = MaxPooling3D(pool_size=(2,2,2))(c_1_3)        
     
     if hyperparameters["batch_normalization"]:
         bn=BatchNormalization(name="bn_"+str(index))(max_pool)
-        output=Activation(hyperparameters["activation"], name="sixth_layer_out")(bn)
+        output=Activation(hyperparameters["activation"], name="sixth_layer_out_"+str(index))(bn)
     else:
-        output=Activation(hyperparameters["activation"], name="sixth_layer_out")(max_pool)
+        output=Activation(hyperparameters["activation"], name="sixth_layer_out_"+str(index))(max_pool)
     
     return output
 class DWNet:
@@ -288,9 +318,9 @@ class DWNet:
     #create model from hypes dict
     def get_model(input_layer,hyperparameters, visual=False):
         
-        alpha_out = alpha(input_layer,hyperparameters)
-        beta_out = beta(alpha_out,hyperparameters)
-        gama_out = gama(beta_out,hyperparameters)
+        alpha_out = alpha(input_layer,hyperparameters,0)
+        beta_out = beta(alpha_out,hyperparameters,1)
+        gama_out = gama(beta_out,hyperparameters,2)
 #        delta_out = delta(gama_out,hyperparameters)
 #        epsilon_out = epsilon(delta_out,hyperparameters)
 #        zita_out = zita(epsilon_out,hyperparameters)

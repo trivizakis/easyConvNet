@@ -10,7 +10,7 @@
 import keras
 from keras.models import Sequential,Model
 from keras.layers import LSTM, TimeDistributed,Conv1D, Conv2D, Conv3D, BatchNormalization, Activation
-from keras.layers import Flatten, Dense, Dropout, Input, AveragePooling1D, AveragePooling2D,AveragePooling3D
+from keras.layers import Flatten, Dense, Dropout, Input,InputLayer, AveragePooling1D, AveragePooling2D,AveragePooling3D
 from keras import regularizers
 from utils import Utils
 import numpy as np
@@ -19,7 +19,7 @@ from medinception import Medinception as MI
 from widenet1d import WideNet as WN
 from deep_wide_analysis import DWNet as DW
 from DWNet3D import DWNet as DW3D
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 #create a convolutional layer
 def get_conv_layer(hyperparameters, index):
@@ -99,14 +99,15 @@ class CustomModel:
         report = classification_report(y_true,y_pred, target_names=hyperparameters["class_names"])
         cm = confusion_matrix(y_true,y_pred)
             
-        roc = roc_auc_score(y_true,y_pred)
-        
-        fpr, tpr, thresholds = roc_curve(y_true, y_pred, pos_label=2)
-        auc_score = auc(fpr, tpr)
+        if hyperparameters['num_classes']<=2:
+            roc = roc_auc_score(y_true,y_pred)
+            
+            fpr, tpr, thresholds = roc_curve(y_true, y_pred, pos_label=2)
+            auc_score = auc(fpr, tpr)
+            print("Test roc_auc_score: {0:.2f}%".format(roc*100))
 
         #print metrics
         print("Test Accuracy: {0:.2f}%".format(acc*100))
-        print("Test roc_auc_score: {0:.2f}%".format(roc*100))
         print(report)
         print("__Confusion matrix__\n")
         print(cm)
@@ -115,10 +116,11 @@ class CustomModel:
         with open(chckp_dir+hyperparameters["log_dir"]+"test_metrics.txt", "w") as text_file:
             text_file.write('Test accuracy: '+str(acc))
             text_file.write('\n')
-            text_file.write('Test roc_score: '+str(roc))
-            text_file.write('\n')
-            text_file.write('Test auc_score: '+str(auc_score))
-            text_file.write('\n')
+            if hyperparameters['num_classes']<=2:
+                text_file.write('Test roc_score: '+str(roc))
+                text_file.write('\n')
+                text_file.write('Test auc_score: '+str(auc_score))
+                text_file.write('\n')
             text_file.write(str(report))
             text_file.write('\n')
             text_file.write('Confusion matrix:\n')
@@ -130,7 +132,10 @@ class CustomModel:
             text_file.write('Predictions:\n')
             text_file.write(str(y_pred))
             
-        return y_true, confidence
+        if hyperparameters['num_classes']<=2:
+            return y_true, confidence, acc, roc
+        else:
+            return y_true, confidence, acc
             
     #test model
     def test_model(model,hyperparameters,testing_generator):
@@ -192,7 +197,7 @@ class CustomModel:
             text_file.write('Predictions:\n')
             text_file.write(str(y_pred))
             
-        return y_true, confidence
+        return y_true, y_pred, roc*100, confidence
             
     
     #train model
@@ -216,7 +221,7 @@ class CustomModel:
                   shuffle=hyperparameters["shuffle"])
         return model
     #create model from hypes dict
-    def get_model(hyperparameters, visual=False):
+    def get_model(hyperparameters, visual=False, visual_nn=False):
         
         if hyperparameters["MedInception"]:
             #custom inception-ResNet-v2
@@ -273,16 +278,27 @@ class CustomModel:
                     #add flatten
                     convnet.add(Flatten(name="flatten_layer"))  
                 else:
-                    #add flatten
-                    convnet.add(Flatten(name="flatten_layer"))        
+                    fc_num=0
+                    if len(convnet.layers) == 0:
+                        #if only neural network
+                        convnet.add(Dense(units=hyperparameters["neurons"][0], activation=hyperparameters["activation"], name="fc"+str(0), input_shape=hyperparameters["input_shape"]))
+                        convnet.add(Dropout(rate=hyperparameters["dropout"],name="drop"+str(0)))
+                        if hyperparameters["fc_bn"]:
+                            convnet.add(BatchNormalization(name="fc_bn"+str(0)))
+                        fc_num=1
+                    else:
+                        #if convnet
+                        #add flatten
+                        convnet.add(Flatten(name="flatten_layer"))        
                     #add fc layers
-                    for fc_layer_num in range(0,len(hyperparameters["neurons"])):
+                    for fc_layer_num in range(fc_num,len(hyperparameters["neurons"])):
                         convnet.add(get_fc_layer(hyperparameters, fc_layer_num))
                         convnet.add(Dropout(rate=hyperparameters["dropout"],name="drop"+str(fc_layer_num)))
                         if hyperparameters["fc_bn"]:
                             convnet.add(BatchNormalization(name="fc_bn"+str(fc_layer_num)))
-                #add classification layer
-                convnet.add(Dense(units=hyperparameters["num_classes"], activation=hyperparameters["classifier"], name=hyperparameters["classifier"]+"_layer"))
+                if visual_nn is False:
+                    #add classification layer
+                    convnet.add(Dense(units=hyperparameters["num_classes"], activation=hyperparameters["classifier"], name=hyperparameters["classifier"]+"_layer"))
         
         #keras loss functions by initials
         if hyperparameters["loss"] == "scc":
@@ -291,28 +307,6 @@ class CustomModel:
             loss=keras.losses.categorical_crossentropy
         elif hyperparameters["loss"] == "bc":
             loss=keras.losses.binary_crossentropy
-        elif hyperparameters["loss"] == "hinge":
-            loss=keras.losses.hinge
-        elif hyperparameters["loss"] == "squared_hinge":
-            loss=keras.losses.squared_hinge
-        elif hyperparameters["loss"] == "categorical_hinge":
-            loss=keras.losses.categorical_hinge     
-        elif hyperparameters["loss"] == "logcosh":
-            loss=keras.losses.logcosh          
-        elif hyperparameters["loss"] == "huber_loss":
-            loss=keras.losses.huber_loss                 
-        elif hyperparameters["loss"] == "kullback_leibler_divergence":
-            loss=keras.losses.kullback_leibler_divergence                       
-        elif hyperparameters["loss"] == "poisson":
-            loss=keras.losses.poisson                   
-        elif hyperparameters["loss"] == "cosine_proximity":
-            loss=keras.losses.cosine_proximity    
-        elif hyperparameters["loss"] == "mean_squared_error":
-            loss=keras.losses.mean_squared_error   
-        elif hyperparameters["loss"] == "mean_squared_logarithmic_error":
-            loss=keras.losses.mean_squared_logarithmic_error   
-        elif hyperparameters["loss"] == "mean_absolute_error":
-            loss=keras.losses.mean_absolute_error   
         else:
             print("Not Supported: " + hyperparameters["loss"])
         

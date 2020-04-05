@@ -8,7 +8,7 @@
 """
 import numpy as np
 import pickle as pkl
-#import nrrd
+import nrrd
 #import SimpleITK as sitk
 import cv2
 import os
@@ -25,7 +25,10 @@ def centering_volume(mri,roi,labels,pid,hypes):
             tmp=0
             tmp2=0
             for k in range(0,len(roi[i])):
-                if any(e==1 for j in range(0,len(roi[i][k])) for e in roi[i][k][j]) is True:                   
+#                print(len(roi[i]))#number of volumes
+#                print(len(roi[i][0]))#number of slices
+#                print(roi[i][0][0].shape)#image
+                if any(np.any(e) for j in range(0,len(roi[i][k])) for e in roi[i][k][j]) is True:                   
                     head=k
                     break
             diff = v_length-hypes["input_shape"][0]
@@ -68,17 +71,25 @@ def dataset_loader(file_path,pid,suffix):
        suffix: str - file name suffix
    """
     dataset=[]
+    to_remove_list=[]
     for j in range (0,len(pid)):
-#        data, options = nrrd.read(file_path + pid[j]  + suffix)
-        data = sitk.ReadImage(file_path + pid[j]  + suffix)
-        data = np.transpose(data,(2,0,1))#first number of slices
+        try:
+#            data = sitk.ReadImage(file_path + pid[j]  + suffix)
+            data, options = nrrd.read(file_path + pid[j]  + suffix)
+            data = np.transpose(data,(2,0,1))#first number of slices
+        except:
+            print(pid[j]  + " : does not exist!")
+            to_remove_list.append(j)
+            continue
         
+        print(pid[j])
         #fix rendering errors
         data = np.nan_to_num(data)
         data[data<0]=0        
-        
         dataset.append(data)
-    return dataset
+    for index in to_remove_list:
+        del pid[index]
+    return dataset, pid
 
 def image_normalization(X, hypes): 
     print("Normalizing...")          
@@ -90,6 +101,8 @@ def image_normalization(X, hypes):
         std = np.std(np.array(X).ravel())
         mean = np.mean(np.array(X).ravel())
         X = (X - mean)/std
+    else:
+        X=np.array(X)
     return X.astype("float16")
 
 class DataConverter():
@@ -162,7 +175,25 @@ class DataConverter():
             np.save(self.hypes["dataset_dir"]+augmented_pids[index],image)
             
         return tr_pids, tr_classes
+    
+    def color_fusion():
         
+        return
+    
+    def import_nrrd_to_npy(self):
+        #open pkl with classes and pids
+        with open(self.hypes["dataset_dir"]+"labels.pkl", "rb") as file:        
+            classes=pkl.load(file)            
+#        labels = list(classes.values())
+        pid = list(classes.keys())
+        
+        print("Loading from HDD...")
+        data, new_pids = dataset_loader(self.hypes["dataset_dir"],pid,self.hypes["mri_file_suffix"]) #pid
+        
+        print("Saving...")
+        for index , image in enumerate(data):
+            np.save(self.hypes["dataset_dir"]+new_pids[index],image)
+    
     def convert_nrrd_to_npy(self):
         #open pkl with classes and pids
         with open(self.hypes["dataset_dir"]+"labels.pkl", "rb") as file:        
@@ -171,9 +202,9 @@ class DataConverter():
         pid = list(classes.keys())
         
         print("Loading from HDD...")
-        mri = dataset_loader(self.hypes["dataset_dir"]+"mri/",pid,self.hypes["mri_file_suffix"]) #pid
-        roi = dataset_loader(self.hypes["dataset_dir"]+"roi/",pid,self.hypes["roi_file_suffix"])                
-
+        mri, pid = dataset_loader(self.hypes["dataset_dir"]+"mri/",pid,self.hypes["mri_file_suffix"]) #pid
+        roi, pid = dataset_loader(self.hypes["dataset_dir"]+"roi/",pid,self.hypes["roi_file_suffix"])                
+        
         print("Centering...")
         f_data, f_labels, f_pids = centering_volume(mri,roi,labels,pid, self.hypes)
         f_data = image_normalization(f_data, self.hypes)                                
@@ -227,7 +258,7 @@ class DataConverter():
         
         images = image_normalization(images, self.hypes) 
         np.save(self.hypes["dataset_dir"]+"pids",pids)
-        np.save(self.hypes["dataset_dir"]+"labels", label_values)
+        np.save(self.hypes["dataset_dir"]+"labels",label_values)
         
         for index , image in enumerate(images):
             np.save(self.hypes["dataset_dir"]+pids[index],image)

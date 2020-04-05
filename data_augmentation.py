@@ -40,7 +40,9 @@ def get_aug_data_volume(volume,dict_params):
         tmp_v=[]
         for j in range(0,len(volume)): #same tansformation hypes per volume
 #            tmp_v.append(np.reshape(elastic_transform(volume[j],alpha=dict_params["input_shape"][1]*dict_params["alpha"][i],sigma=dict_params["input_shape"][1]*dict_params["sigma"][i],alpha_affine=dict_params["input_shape"][1]*dict_params["alpha_affine"][i]),(dict_params["input_shape"][1],dict_params["input_shape"][2])))
-            tmp_v.append(np.reshape(elastic_transform(np.reshape(volume[j],(dict_params["input_shape"][1],dict_params["input_shape"][2],dict_params["input_shape"][3])),alpha=dict_params["input_shape"][1]*dict_params["alpha"][i],sigma=dict_params["input_shape"][1]*dict_params["sigma"][i],alpha_affine=dict_params["input_shape"][1]*dict_params["alpha_affine"][i]),(dict_params["input_shape"][1],dict_params["input_shape"][2])))
+#            print(volume[j].shape)
+#            print(str((dict_params["input_shape"][1],dict_params["input_shape"][2],dict_params["input_shape"][3])))
+            tmp_v.append(np.reshape(elastic_transform(np.reshape(volume[j],(dict_params["input_shape"][1],dict_params["input_shape"][2],dict_params["input_shape"][3])),alpha=dict_params["input_shape"][1]*dict_params["alpha"][i],sigma=dict_params["input_shape"][1]*dict_params["sigma"][i],alpha_affine=dict_params["input_shape"][1]*dict_params["alpha_affine"][i]),(dict_params["input_shape"][1],dict_params["input_shape"][2],dict_params["input_shape"][3])))
         elastic.append(np.stack(tmp_v))
     elastic=np.stack(elastic).reshape(-1,dict_params["input_shape"][0],dict_params["input_shape"][1],dict_params["input_shape"][2],dict_params["input_shape"][3])
 #    print("Elastic list:"+str(elastic.shape))
